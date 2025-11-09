@@ -170,7 +170,11 @@ struct TaskEditView: View {
                             interval: $viewModel.reminderInterval,
                             priority: viewModel.priority,
                             taskType: viewModel.taskType,
-                            snoozeMaxCount: $viewModel.snoozeMaxCount
+                            snoozeMaxCount: $viewModel.snoozeMaxCount,
+                            snoozeUnlimited: $viewModel.snoozeUnlimited,
+                            reminderEndTime: $viewModel.reminderEndTime,
+                            deadline: viewModel.deadline,
+                            startDateTime: viewModel.startDateTime
                         )
                     }
                     .listRowBackground(Color(.systemBackground))
