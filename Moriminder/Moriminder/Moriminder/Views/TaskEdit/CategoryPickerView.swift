@@ -76,6 +76,8 @@ struct CategoryPickerView: View {
                         try viewContext.save()
                         // カテゴリ作成後に親のViewModelに通知
                         onCategoryCreated?()
+                        // カテゴリ変更通知を送信
+                        NotificationCenter.default.post(name: NSNotification.Name("CategoriesDidChange"), object: nil)
                         // 保存後に検索テキストをクリア
                         searchText = ""
                     } catch {

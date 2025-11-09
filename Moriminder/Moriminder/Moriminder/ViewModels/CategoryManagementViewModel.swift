@@ -34,6 +34,7 @@ class CategoryManagementViewModel: ObservableObject {
         do {
             try categoryManager.deleteCategory(category)
             loadCategories()
+            NotificationCenter.default.post(name: NSNotification.Name("CategoriesDidChange"), object: nil)
         } catch {
             print("カテゴリ削除エラー: \(error)")
         }
@@ -57,6 +58,7 @@ class CategoryManagementViewModel: ObservableObject {
             }
             loadCategories()
             categoryToEdit = nil
+            NotificationCenter.default.post(name: NSNotification.Name("CategoriesDidChange"), object: nil)
         } catch {
             print("カテゴリ更新エラー: \(error)")
         }

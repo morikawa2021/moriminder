@@ -13,6 +13,30 @@ enum FilterMode: Equatable {
     case completed
     case category(String)
     case priority(Priority)
+    
+    var displayName: String {
+        switch self {
+        case .all:
+            return "すべて"
+        case .incomplete:
+            return "未完了"
+        case .completed:
+            return "完了済み"
+        case .category(let categoryName):
+            return "カテゴリ: \(categoryName)"
+        case .priority(let priority):
+            let priorityName: String
+            switch priority {
+            case .low:
+                priorityName = "低"
+            case .medium:
+                priorityName = "中"
+            case .high:
+                priorityName = "高"
+            }
+            return "重要度: \(priorityName)"
+        }
+    }
 }
 
 enum SortMode: Equatable {
@@ -59,68 +83,212 @@ enum SortMode: Equatable {
 struct FilterSortBar: View {
     @Binding var filterMode: FilterMode
     @Binding var sortMode: SortMode
+    @Environment(\.managedObjectContext) private var viewContext
+    
+    @State private var categories: [Category] = []
     
     var body: some View {
-        HStack {
+        HStack(spacing: 12) {
             // フィルタボタン
             Menu {
-                Button("すべて") {
+                Button {
                     filterMode = .all
+                } label: {
+                    HStack {
+                        Text("すべて")
+                        Spacer()
+                        if filterMode == .all {
+                            Image(systemName: "checkmark")
+                        }
+                    }
                 }
-                Button("未完了") {
+                
+                Button {
                     filterMode = .incomplete
+                } label: {
+                    HStack {
+                        Text("未完了")
+                        Spacer()
+                        if filterMode == .incomplete {
+                            Image(systemName: "checkmark")
+                        }
+                    }
                 }
-                Button("完了済み") {
+                
+                Button {
                     filterMode = .completed
+                } label: {
+                    HStack {
+                        Text("完了済み")
+                        Spacer()
+                        if filterMode == .completed {
+                            Image(systemName: "checkmark")
+                        }
+                    }
+                }
+                
+                if !categories.isEmpty {
+                    Divider()
+                    
+                    ForEach(categories, id: \.id) { category in
+                        Button {
+                            filterMode = .category(category.name ?? "")
+                        } label: {
+                            HStack {
+                                if let colorHex = category.color {
+                                    Circle()
+                                        .fill(CategoryManager.colorFromHex(colorHex))
+                                        .frame(width: 12, height: 12)
+                                }
+                                Text(category.name ?? "")
+                                Spacer()
+                                if case .category(let categoryName) = filterMode, categoryName == category.name {
+                                    Image(systemName: "checkmark")
+                                }
+                            }
+                        }
+                    }
                 }
             } label: {
-                Label("フィルタ", systemImage: "line.3.horizontal.decrease.circle")
+                HStack(spacing: 4) {
+                    Image(systemName: "line.3.horizontal.decrease.circle")
+                    Text("ﾌｨﾙﾀ: \(filterMode.displayName)")
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                }
+            }
+            .buttonStyle(.plain)
+            .onAppear {
+                loadCategories()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("CategoriesDidChange"))) { _ in
+                loadCategories()
             }
             
-            Spacer()
+            Spacer(minLength: 8)
             
             // ソートボタン
             Menu {
                 Menu("期限") {
-                    Button("早い順") {
+                    Button {
                         sortMode = .deadlineAsc
+                    } label: {
+                        HStack {
+                            Text("早い順")
+                            Spacer()
+                            if sortMode == .deadlineAsc {
+                                Image(systemName: "checkmark")
+                            }
+                        }
                     }
-                    Button("遅い順") {
+                    
+                    Button {
                         sortMode = .deadlineDesc
+                    } label: {
+                        HStack {
+                            Text("遅い順")
+                            Spacer()
+                            if sortMode == .deadlineDesc {
+                                Image(systemName: "checkmark")
+                            }
+                        }
                     }
                 }
                 
                 Menu("重要度") {
-                    Button("高い順") {
+                    Button {
                         sortMode = .priorityDesc
+                    } label: {
+                        HStack {
+                            Text("高い順")
+                            Spacer()
+                            if sortMode == .priorityDesc {
+                                Image(systemName: "checkmark")
+                            }
+                        }
                     }
-                    Button("低い順") {
+                    
+                    Button {
                         sortMode = .priorityAsc
+                    } label: {
+                        HStack {
+                            Text("低い順")
+                            Spacer()
+                            if sortMode == .priorityAsc {
+                                Image(systemName: "checkmark")
+                            }
+                        }
                     }
                 }
                 
                 Menu("開始日時") {
-                    Button("早い順") {
+                    Button {
                         sortMode = .startDateTimeAsc
+                    } label: {
+                        HStack {
+                            Text("早い順")
+                            Spacer()
+                            if sortMode == .startDateTimeAsc {
+                                Image(systemName: "checkmark")
+                            }
+                        }
                     }
-                    Button("遅い順") {
+                    
+                    Button {
                         sortMode = .startDateTimeDesc
+                    } label: {
+                        HStack {
+                            Text("遅い順")
+                            Spacer()
+                            if sortMode == .startDateTimeDesc {
+                                Image(systemName: "checkmark")
+                            }
+                        }
                     }
                 }
                 
                 Menu("登録日時") {
-                    Button("新しい順") {
+                    Button {
                         sortMode = .createdAtDesc
+                    } label: {
+                        HStack {
+                            Text("新しい順")
+                            Spacer()
+                            if sortMode == .createdAtDesc {
+                                Image(systemName: "checkmark")
+                            }
+                        }
                     }
-                    Button("古い順") {
+                    
+                    Button {
                         sortMode = .createdAtAsc
+                    } label: {
+                        HStack {
+                            Text("古い順")
+                            Spacer()
+                            if sortMode == .createdAtAsc {
+                                Image(systemName: "checkmark")
+                            }
+                        }
                     }
                 }
             } label: {
-                Label("ソート: \(sortMode.displayName)", systemImage: "arrow.up.arrow.down")
+                HStack(spacing: 4) {
+                    Image(systemName: "arrow.up.arrow.down")
+                    Text("ｿｰﾄ: \(sortMode.displayName)")
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                }
             }
+            .buttonStyle(.plain)
         }
-        .padding()
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+    }
+    
+    private func loadCategories() {
+        let categoryManager = CategoryManager(viewContext: viewContext)
+        categories = categoryManager.fetchCategories()
     }
 }
 
