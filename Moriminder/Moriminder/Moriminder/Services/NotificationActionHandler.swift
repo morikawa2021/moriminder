@@ -19,6 +19,28 @@ class NotificationActionHandler: NSObject, UNUserNotificationCenterDelegate {
         super.init()
     }
     
+    // 通知が配信された時（バックグラウンドでも呼ばれる）
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification,
+        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+    ) {
+        // フォアグラウンドでも通知を表示
+        completionHandler([.banner, .sound, .badge])
+        
+        // 通知が配信された後、次の通知をスケジュール（終了日時がない場合）
+        let taskId = extractTaskId(from: notification)
+        if let taskId = taskId,
+           let task = taskManager.fetchTask(id: taskId) {
+            _Concurrency.Task {
+                try? await notificationManager.scheduleNextReminderAfterDelivery(
+                    for: task,
+                    deliveredAt: Date()
+                )
+            }
+        }
+    }
+    
     // 通知アクションの処理
     func userNotificationCenter(
         _ center: UNUserNotificationCenter,
@@ -34,6 +56,17 @@ class NotificationActionHandler: NSObject, UNUserNotificationCenterDelegate {
         guard let task = taskManager.fetchTask(id: taskId) else {
             completionHandler()
             return
+        }
+        
+        // 通知が配信された後、次の通知をスケジュール（終了日時がない場合）
+        // スヌーズや完了以外のアクションの場合も、次の通知をスケジュール
+        if response.actionIdentifier != "COMPLETE" && response.actionIdentifier != "STOP" {
+            _Concurrency.Task {
+                try? await notificationManager.scheduleNextReminderAfterDelivery(
+                    for: task,
+                    deliveredAt: Date()
+                )
+            }
         }
         
         switch response.actionIdentifier {
@@ -71,6 +104,13 @@ class NotificationActionHandler: NSObject, UNUserNotificationCenterDelegate {
             )
             
         default:
+            // 通知をタップした場合も、次の通知をスケジュール
+            _Concurrency.Task {
+                try? await notificationManager.scheduleNextReminderAfterDelivery(
+                    for: task,
+                    deliveredAt: Date()
+                )
+            }
             break
         }
         

@@ -23,21 +23,41 @@ class ReminderService {
         let startTime = task.reminderStartTime ?? Date()
         let endTime = task.reminderEndTime ?? task.deadline ?? task.startDateTime
 
+        // 終了日時がない場合、無限に通知をスケジュールするため、より多くの通知をスケジュール
         // iOS の通知64個制限に対応するため、直近の通知のみをスケジュール
         // 重要度に応じて最大通知数を調整
         let maxNotificationsPerTask: Int
-        if let priorityString = task.priority,
-           let priority = Priority(rawValue: priorityString) {
-            switch priority {
-            case .high:
-                maxNotificationsPerTask = 15  // 高重要度: 最大15個
-            case .medium:
-                maxNotificationsPerTask = 10  // 中重要度: 最大10個
-            case .low:
-                maxNotificationsPerTask = 5   // 低重要度: 最大5個
+        if endTime == nil {
+            // 終了日時がない場合: より多くの通知をスケジュール（64個制限内で可能な限り多く）
+            // ただし、他のタスクとのバランスを考慮して、重要度に応じた上限を設定
+            if let priorityString = task.priority,
+               let priority = Priority(rawValue: priorityString) {
+                switch priority {
+                case .high:
+                    maxNotificationsPerTask = 30  // 高重要度: 最大30個（終了日時なし）
+                case .medium:
+                    maxNotificationsPerTask = 20  // 中重要度: 最大20個（終了日時なし）
+                case .low:
+                    maxNotificationsPerTask = 10   // 低重要度: 最大10個（終了日時なし）
+                }
+            } else {
+                maxNotificationsPerTask = 10  // デフォルト（終了日時なし）
             }
         } else {
-            maxNotificationsPerTask = 5  // デフォルト
+            // 終了日時がある場合: 従来通り
+            if let priorityString = task.priority,
+               let priority = Priority(rawValue: priorityString) {
+                switch priority {
+                case .high:
+                    maxNotificationsPerTask = 15  // 高重要度: 最大15個
+                case .medium:
+                    maxNotificationsPerTask = 10  // 中重要度: 最大10個
+                case .low:
+                    maxNotificationsPerTask = 5   // 低重要度: 最大5個
+                }
+            } else {
+                maxNotificationsPerTask = 5  // デフォルト
+            }
         }
 
         var currentTime = startTime
@@ -50,6 +70,7 @@ class ReminderService {
                 let interval = intervals[notificationCount % intervals.count]
                 currentTime = currentTime.addingTimeInterval(TimeInterval(interval * 60))
 
+                // 終了日時がある場合のみ、終了時刻をチェック
                 if let endTime = endTime, currentTime > endTime {
                     break
                 }
@@ -63,8 +84,31 @@ class ReminderService {
             notificationCount += 1
         }
 
-        // 注: アプリ起動時やバックグラウンドタスクで、次の通知を追加でスケジュールする
-        // 実装は NotificationRefreshService で行う（後述）
+        // 注: 終了日時がない場合、通知が配信された後、次の通知を自動的にスケジュールする
+        // 実装は NotificationActionHandler と NotificationRefreshService で行う
+    }
+    
+    // 次のリマインド通知をスケジュール（終了日時がない場合に使用）
+    func scheduleNextReminder(for task: Task, from currentTime: Date) async throws {
+        guard task.reminderEnabled else { return }
+        guard !task.isCompleted else { return }
+        
+        // 終了日時がない場合のみ、次の通知をスケジュール
+        let endTime = task.reminderEndTime ?? task.deadline ?? task.startDateTime
+        guard endTime == nil else { return }
+        
+        let intervals = calculateReminderIntervals(for: task)
+        let interval = intervals.first ?? 60  // デフォルトは1時間間隔
+        
+        let nextTime = currentTime.addingTimeInterval(TimeInterval(interval * 60))
+        
+        // 未来の時刻のみスケジュール
+        guard nextTime > Date() else { return }
+        
+        try await notificationManager.scheduleReminderNotification(
+            for: task,
+            at: nextTime
+        )
     }
     
     // リマインド間隔の計算（重要度とタスクタイプに基づく）

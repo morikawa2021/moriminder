@@ -153,6 +153,19 @@ class NotificationManager {
         try await scheduleReminderNotification(for: task, at: nextReminderTime)
     }
     
+    // 通知が配信された後、次の通知をスケジュール（終了日時がない場合）
+    func scheduleNextReminderAfterDelivery(for task: Task, deliveredAt: Date) async throws {
+        guard task.reminderEnabled else { return }
+        guard !task.isCompleted else { return }
+        
+        // 終了日時がない場合のみ、次の通知をスケジュール
+        let endTime = task.reminderEndTime ?? task.deadline ?? task.startDateTime
+        guard endTime == nil else { return }
+        
+        let reminderService = ReminderService(notificationManager: self)
+        try await reminderService.scheduleNextReminder(for: task, from: deliveredAt)
+    }
+    
     // 重要度を通知重要度にマッピング（iOS 15+）
     private func mapPriorityToInterruptionLevel(_ priority: Priority) -> UNNotificationInterruptionLevel {
         switch priority {
