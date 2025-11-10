@@ -7,6 +7,7 @@
 
 import Foundation
 import CoreData
+import UserNotifications
 
 class TaskManager {
     private let viewContext: NSManagedObjectContext
@@ -67,21 +68,43 @@ class TaskManager {
         }
         
         // 3. 通知スケジュール
+        // 編集時は既存の通知をキャンセルしてから再スケジュール
+        let isEditing = task.createdAt != nil && task.id != nil
+        if isEditing {
+            await notificationManager.cancelNotifications(for: task)
+        }
+        
+        // 通知権限を確認してからスケジュール
+        let authorizationStatus = await notificationManager.checkAuthorizationStatus()
+        if authorizationStatus != .authorized && authorizationStatus != .provisional {
+            print("警告: 通知権限が許可されていません。ステータス: \(authorizationStatus.rawValue)")
+            // 権限がない場合でもタスクの保存は続行
+        }
+        
         if task.alarmEnabled {
             do {
                 try await notificationManager.scheduleAlarm(for: task)
+                print("アラームスケジュール成功: \(task.title ?? "無題")")
             } catch {
                 print("アラームスケジュールエラー: \(error)")
                 // 通知エラーは保存を妨げないが、ログに記録
             }
+        } else if isEditing {
+            // 編集時にアラームが無効化された場合、既存のアラーム通知をキャンセル
+            await notificationManager.cancelAlarmNotifications(for: task)
         }
+        
         if task.reminderEnabled {
             do {
                 try await notificationManager.scheduleReminder(for: task)
+                print("リマインドスケジュール成功: \(task.title ?? "無題")")
             } catch {
                 print("リマインドスケジュールエラー: \(error)")
                 // 通知エラーは保存を妨げないが、ログに記録
             }
+        } else if isEditing {
+            // 編集時にリマインドが無効化された場合、既存のリマインド通知をキャンセル
+            await notificationManager.cancelReminderNotifications(for: task)
         }
         
         // 4. 繰り返しタスクの場合は次回インスタンスを生成

@@ -17,7 +17,7 @@ struct MoriminderApp: App {
     init() {
         // アプリ全体のロケールを日本語に設定
         if let path = Bundle.main.path(forResource: "ja", ofType: "lproj"),
-           let bundle = Bundle(path: path) {
+           let _ = Bundle(path: path) {
             UserDefaults.standard.set(["ja"], forKey: "AppleLanguages")
         }
         

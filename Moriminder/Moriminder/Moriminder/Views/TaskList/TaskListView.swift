@@ -13,6 +13,7 @@ struct TaskListView: View {
     @Environment(\.managedObjectContext) private var viewContext
     @State private var taskToSubdivide: Task?
     @State private var showCategoryManagement = false
+    @State private var showNotificationDebug = false
     
     var body: some View {
         NavigationView {
@@ -76,11 +77,20 @@ struct TaskListView: View {
                 AppTitleToolbar()
                 
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button {
-                        showCategoryManagement = true
-                    } label: {
-                        Image(systemName: "folder.fill")
-                            .foregroundColor(.blue)
+                    HStack {
+                        Button {
+                            showNotificationDebug = true
+                        } label: {
+                            Image(systemName: "bell.badge")
+                                .foregroundColor(.blue)
+                        }
+                        
+                        Button {
+                            showCategoryManagement = true
+                        } label: {
+                            Image(systemName: "folder.fill")
+                                .foregroundColor(.blue)
+                        }
                     }
                 }
             }
@@ -161,6 +171,9 @@ struct TaskListView: View {
             }
             .sheet(isPresented: $showCategoryManagement) {
                 CategoryManagementView(viewContext: viewContext)
+            }
+            .sheet(isPresented: $showNotificationDebug) {
+                NotificationDebugView()
             }
         }
     }

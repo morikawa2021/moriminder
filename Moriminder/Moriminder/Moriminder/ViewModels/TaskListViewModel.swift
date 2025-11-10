@@ -115,7 +115,7 @@ class TaskListViewModel: ObservableObject {
         _Concurrency.Task {
             // 通知をキャンセル
             let notificationManager = NotificationManager()
-            try? await notificationManager.cancelNotifications(for: task)
+            await notificationManager.cancelNotifications(for: task)
             
             // Core Dataを保存
             try? viewContext.save()

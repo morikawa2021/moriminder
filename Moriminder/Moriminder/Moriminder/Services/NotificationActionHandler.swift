@@ -162,7 +162,7 @@ extension UNNotificationCategory {
                 )
             ],
             intentIdentifiers: [],
-            options: []
+            options: [.customDismissAction]  // カスタムアクションを有効化
         )
         
         let reminderCategory = UNNotificationCategory(
@@ -190,7 +190,7 @@ extension UNNotificationCategory {
                 )
             ],
             intentIdentifiers: [],
-            options: []
+            options: [.customDismissAction]  // カスタムアクションを有効化
         )
         
         center.setNotificationCategories([alarmCategory, reminderCategory])

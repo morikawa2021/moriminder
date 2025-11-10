@@ -146,6 +146,14 @@ struct ReminderSettingView: View {
             if reminderEndTime != nil {
                 showReminderEndTimePicker = true
             }
+            
+            // 既存の間隔がデフォルト値と一致するかどうかで、デフォルト設定を使用するかどうかを判定
+            // 一致する場合はデフォルト設定を使用、一致しない場合はカスタム設定を使用
+            if interval == defaultInterval {
+                useDefaultSettings = true
+            } else {
+                useDefaultSettings = false
+            }
         }
         .onChange(of: reminderEndTime) { newValue in
             // リマインド終了時刻が設定された場合、ピッカーを表示
