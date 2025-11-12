@@ -29,9 +29,22 @@
 		94BCA45E2EC03A5D003976BB /* MoriminderUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MoriminderUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		9403AA6A2EC51DFB00603238 /* Exceptions for "Moriminder" folder in "Moriminder" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 94BCA4412EC03A53003976BB /* Moriminder */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		94BCA4442EC03A53003976BB /* Moriminder */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				9403AA6A2EC51DFB00603238 /* Exceptions for "Moriminder" folder in "Moriminder" target */,
+			);
 			path = Moriminder;
 			sourceTree = "<group>";
 		};
@@ -398,6 +411,7 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Moriminder/Info.plist;
 				INFOPLIST_KEY_NSUserNotificationsUsageDescription = "重要なタスクの通知を時間に敏感な通知として送信します";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
@@ -443,6 +457,7 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Moriminder/Info.plist;
 				INFOPLIST_KEY_NSUserNotificationsUsageDescription = "重要なタスクの通知を時間に敏感な通知として送信します";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;

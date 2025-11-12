@@ -15,20 +15,17 @@ class ReminderService {
         self.notificationManager = notificationManager
     }
     
-    // リマインドスケジュール（シンプル化版：開始日時・間隔・終了日時のみ）
+    // リマインドスケジュール（動的スケジューリング版：初回は5個のみ登録）
     func scheduleReminder(for task: Task) async throws {
         guard task.reminderEnabled else { return }
 
         // 現在の通知数を確認（iOS 64個制限への対応）
         let currentNotificationCount = await notificationManager.getPendingNotifications().count
-        let availableSlots = 64 - currentNotificationCount
 
-        if availableSlots <= 0 {
-            print("⚠️ 警告: 通知の制限（64個）に達しています。新しい通知をスケジュールできません。")
-            throw NotificationError.notificationLimitReached
-        }
+        print("📊 通知状況: 現在 \(currentNotificationCount)/64個")
 
-        print("📊 通知状況: 現在 \(currentNotificationCount)/64個、残り \(availableSlots)個のスロット")
+        // 初回スケジュール時は5個のみ登録（動的スケジューリング）
+        let initialNotificationCount = 5
 
         // 1. 開始時刻の決定
         var startTime: Date
@@ -53,11 +50,11 @@ class ReminderService {
         // 3. 間隔を取得（分単位）
         let intervalMinutes = Int(task.reminderInterval)
 
-        // 4. 通知をスケジュール
+        // 4. 通知をスケジュール（初回は5個のみ）
         var currentTime = startTime
         var scheduledCount = 0
 
-        while scheduledCount < availableSlots {
+        while scheduledCount < initialNotificationCount {
             // タスクが完了している場合は終了
             guard !task.isCompleted else { break }
 
@@ -86,9 +83,9 @@ class ReminderService {
 
         let endInfo = endTime == nil ? "完了まで無期限" : "終了: \(endTime!)"
         print("✅ リマインドスケジュール完了: \(task.title ?? "無題") - \(scheduledCount)個の通知 (\(endInfo))")
+        print("   ※ 通知は自動的に補充されます（NotificationRefreshService）")
 
-        // 注: 終了日時がない場合、通知が配信された後、次の通知を自動的にスケジュールする
-        // 実装は NotificationActionHandler で行う
+        // 注: 通知が配信された後、または通知数が減った時に、NotificationRefreshServiceが自動的に補充する
     }
     
     // 次のリマインド通知をスケジュール（終了日時がない場合に使用）

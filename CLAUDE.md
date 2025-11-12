@@ -90,7 +90,16 @@ Simple, user-controlled reminder settings with three parameters:
 - Unified settings for both tasks and schedules (no automatic adjustment by priority/type)
 - Users have full control over timing and frequency
 - Reminders continue indefinitely if no end time is set
-- Limited only by iOS 64-notification system limit
+
+**Dynamic Scheduling (iOS 64-notification limit):**
+- Initial: Only 5 notifications per task scheduled
+- Refresh triggers:
+  - App launch
+  - Foreground return
+  - Notification delivery
+  - Background tasks (every 12 hours)
+- Allows ~12 tasks with unlimited reminders (64÷5=12.8)
+- Implemented by NotificationRefreshService and BackgroundTaskManager
 
 ### 3. Natural Language Parsing
 - Automatically extract date/time from task titles
@@ -166,10 +175,15 @@ Simple, user-controlled reminder settings with three parameters:
 
 4. **Natural language parsing**: Use `NSDataDetector` for date extraction from Japanese text
 
-5. **Notification scheduling**:
-   - Schedule all reminders in advance (not just next one)
+5. **Notification scheduling (Dynamic Scheduling)**:
+   - Initial: Schedule only 5 notifications per task
+   - Refresh automatically via NotificationRefreshService
    - Clean up notifications when tasks complete
-   - Handle notification limits (iOS has a 64 notification limit per app)
+   - BGTaskScheduler setup required:
+     1. Open Xcode project
+     2. Select target → Info tab
+     3. Add "Permitted background task scheduler identifiers" key
+     4. Add item: `jp.co.softstudio.Moriminder.notification-refresh`
 
 6. **LLM API integration**:
    - Timeout: 10 seconds
