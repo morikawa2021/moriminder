@@ -167,10 +167,9 @@ struct TaskEditView: View {
                     Group {
                         ReminderSettingView(
                             enabled: $viewModel.reminderEnabled,
+                            startTime: $viewModel.reminderStartTime,
                             interval: $viewModel.reminderInterval,
-                            priority: viewModel.priority,
-                            taskType: viewModel.taskType,
-                            reminderEndTime: $viewModel.reminderEndTime,
+                            endTime: $viewModel.reminderEndTime,
                             deadline: viewModel.deadline,
                             startDateTime: viewModel.startDateTime
                         )

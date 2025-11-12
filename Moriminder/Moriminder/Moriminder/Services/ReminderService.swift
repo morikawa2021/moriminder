@@ -15,243 +15,80 @@ class ReminderService {
         self.notificationManager = notificationManager
     }
     
-    // リマインドスケジュール（iOS通知64個制限に対応）
+    // リマインドスケジュール（シンプル化版：開始日時・間隔・終了日時のみ）
     func scheduleReminder(for task: Task) async throws {
         guard task.reminderEnabled else { return }
-        
+
         // 現在の通知数を確認（iOS 64個制限への対応）
         let currentNotificationCount = await notificationManager.getPendingNotifications().count
         let availableSlots = 64 - currentNotificationCount
-        
+
         if availableSlots <= 0 {
             print("⚠️ 警告: 通知の制限（64個）に達しています。新しい通知をスケジュールできません。")
             throw NotificationError.notificationLimitReached
         }
-        
+
         print("📊 通知状況: 現在 \(currentNotificationCount)/64個、残り \(availableSlots)個のスロット")
 
-        let intervals = calculateReminderIntervals(for: task)
-        
-        // 開始時刻の決定ロジック
-        // 1. reminderStartTimeが明示的に設定されている場合はそれを使用
-        // 2. 設定されていない場合、期限時刻（または開始日時）を基準にリマインドを開始
+        // 1. 開始時刻の決定
         var startTime: Date
         if let explicitStartTime = task.reminderStartTime {
+            // 明示的に設定されている場合はそれを使用
             startTime = explicitStartTime
-            if startTime < Date() {
-                print("警告: リマインド開始時刻が過去です。現在時刻から開始します: \(startTime)")
-                startTime = Date()
-            }
         } else {
-            // reminderStartTimeが設定されていない場合、期限時刻または開始日時を基準に開始
-            let targetTime = task.deadline ?? task.startDateTime
-            if let targetTime = targetTime {
-                // 期限時刻（または開始日時）から逆算してリマインドを開始
-                // 最初の間隔を取得して、期限時刻の前に開始
-                let firstInterval = intervals.first ?? 180 // デフォルト3時間
-                startTime = targetTime.addingTimeInterval(-TimeInterval(firstInterval * 60))
-                
-                // 開始時刻が現在時刻より過去の場合は、現在時刻から開始
-                if startTime < Date() {
-                    print("警告: 計算されたリマインド開始時刻が過去です。現在時刻から開始します: \(startTime)")
-                    startTime = Date()
-                }
-            } else {
-                // 期限時刻も開始日時もない場合、現在時刻から開始
-                startTime = Date()
-            }
-        }
-        
-        let endTime = task.reminderEndTime ?? task.deadline ?? task.startDateTime
-        
-        // 繰り返しタスクのインスタンスかどうかを判定
-        // parentTaskIdが設定されている場合は、繰り返しタスクのインスタンス
-        let isRepeatingInstance = task.parentTaskId != nil
-
-        // 終了日時がない場合、無限に通知をスケジュールするため、より多くの通知をスケジュール
-        // iOS の通知64個制限に対応するため、直近の通知のみをスケジュール
-        // 重要度に応じて最大通知数を調整
-        // 繰り返しタスクのインスタンスの場合は、通知数を減らして他のタスクとのバランスを保つ
-        // 利用可能なスロット数を考慮して、最大通知数を調整
-        let maxNotificationsPerTask: Int
-        if isRepeatingInstance {
-            // 繰り返しタスクのインスタンスの場合: 通知数を減らす（他のインスタンスとのバランスを考慮）
-            if let priorityString = task.priority,
-               let priority = Priority(rawValue: priorityString) {
-                switch priority {
-                case .high:
-                    maxNotificationsPerTask = 5   // 高重要度: 最大5個（インスタンス）
-                case .medium:
-                    maxNotificationsPerTask = 3   // 中重要度: 最大3個（インスタンス）
-                case .low:
-                    maxNotificationsPerTask = 2   // 低重要度: 最大2個（インスタンス）
-                }
-            } else {
-                maxNotificationsPerTask = 2  // デフォルト（インスタンス）
-            }
-        } else if endTime == nil {
-            // 終了日時がない場合: より多くの通知をスケジュール（64個制限内で可能な限り多く）
-            // ただし、他のタスクとのバランスを考慮して、重要度に応じた上限を設定
-            if let priorityString = task.priority,
-               let priority = Priority(rawValue: priorityString) {
-                switch priority {
-                case .high:
-                    maxNotificationsPerTask = 30  // 高重要度: 最大30個（終了日時なし）
-                case .medium:
-                    maxNotificationsPerTask = 20  // 中重要度: 最大20個（終了日時なし）
-                case .low:
-                    maxNotificationsPerTask = 10   // 低重要度: 最大10個（終了日時なし）
-                }
-            } else {
-                maxNotificationsPerTask = 10  // デフォルト（終了日時なし）
-            }
-        } else {
-            // 終了日時がある場合: 従来通り
-            if let priorityString = task.priority,
-               let priority = Priority(rawValue: priorityString) {
-                switch priority {
-                case .high:
-                    maxNotificationsPerTask = 15  // 高重要度: 最大15個
-                case .medium:
-                    maxNotificationsPerTask = 10  // 中重要度: 最大10個
-                case .low:
-                    maxNotificationsPerTask = 5   // 低重要度: 最大5個
-                }
-            } else {
-                maxNotificationsPerTask = 5  // デフォルト
-            }
-        }
-        
-        // 利用可能なスロット数を考慮して、実際にスケジュールする通知数を調整
-        let actualMaxNotifications = min(maxNotificationsPerTask, availableSlots)
-        if actualMaxNotifications < maxNotificationsPerTask {
-            print("⚠️ 通知数制限: 要求 \(maxNotificationsPerTask)個 → 実際 \(actualMaxNotifications)個（利用可能スロット: \(availableSlots)個）")
+            // 未設定の場合、期限/開始日時の1時間前をデフォルトとする
+            let targetTime = task.deadline ?? task.startDateTime ?? Date()
+            startTime = targetTime.addingTimeInterval(-3600) // 1時間前
         }
 
-        // 期限時刻（または開始日時）を基準にリマインドを設定する場合の処理
-        let targetTime = task.deadline ?? task.startDateTime
-        let shouldCalculateFromTarget = targetTime != nil && task.reminderStartTime == nil
-
-        if shouldCalculateFromTarget, let targetTime = targetTime {
-            // 期限時刻の前後でリマインドを設定
-            var reminderTimes: [Date] = []
-
-            // リマインド終了時刻を取得（設定されている場合）
-            let reminderEndTime = task.reminderEndTime
-
-            // 通知枠を期限前と期限後で配分
-            // 期限前: 60%、期限後: 40%（本システムの目的を考慮）
-            let beforeCount = Int(Double(actualMaxNotifications) * 0.6)
-            let afterCount = actualMaxNotifications - beforeCount
-
-            // 1. 期限時刻より前の通知を計算
-            var accumulatedInterval: TimeInterval = 0
-            for i in 0..<beforeCount {
-                let intervalIndex = i % intervals.count
-                let intervalMinutes = intervals[intervalIndex]
-                accumulatedInterval += TimeInterval(intervalMinutes * 60)
-
-                let reminderTime = targetTime.addingTimeInterval(-accumulatedInterval)
-
-                // 現在時刻より未来の時刻のみ追加
-                if reminderTime > Date() {
-                    reminderTimes.append(reminderTime)
-                }
-            }
-
-            // 2. 期限時刻より後の通知を計算（本システムの核心機能）
-            // 期限前と同じ間隔パターンを使用してシンプルに
-            // reminderEndTimeが設定されている場合はその時刻まで、設定されていない場合は継続
-            if reminderEndTime == nil || reminderEndTime! > targetTime {
-                var overdueAccumulatedInterval: TimeInterval = 0
-                for i in 0..<afterCount {
-                    // 期限前と同じ間隔パターンをサイクルして使用
-                    let intervalIndex = i % intervals.count
-                    let intervalMinutes = intervals[intervalIndex]
-                    overdueAccumulatedInterval += TimeInterval(intervalMinutes * 60)
-                    let reminderTime = targetTime.addingTimeInterval(overdueAccumulatedInterval)
-
-                    // リマインド終了時刻を超えないようにする
-                    if let reminderEndTime = reminderEndTime, reminderTime > reminderEndTime {
-                        break
-                    }
-
-                    // 現在時刻より未来の時刻のみ追加
-                    if reminderTime > Date() {
-                        reminderTimes.append(reminderTime)
-                    }
-                }
-            }
-
-            // 時刻順にソート
-            reminderTimes.sort()
-
-            // 計算したリマインド時刻をスケジュール
-            for reminderTime in reminderTimes {
-                if !task.isCompleted {
-                    do {
-                        try await notificationManager.scheduleReminderNotification(
-                            for: task,
-                            at: reminderTime
-                        )
-                        let timing = reminderTime < targetTime ? "期限前" : "期限後"
-                        print("リマインド通知スケジュール成功: \(task.title ?? "無題") at \(reminderTime) (\(timing))")
-                    } catch {
-                        print("リマインド通知スケジュールエラー: \(error.localizedDescription) (タスク: \(task.title ?? "無題"), 時刻: \(reminderTime))")
-                    }
-                }
-            }
-
-            let beforeNotifications = reminderTimes.filter { $0 < targetTime }.count
-            let afterNotifications = reminderTimes.filter { $0 >= targetTime }.count
-            let instanceInfo = isRepeatingInstance ? " (繰り返しインスタンス)" : ""
-            print("リマインドスケジュール完了: \(task.title ?? "無題")\(instanceInfo) - スケジュール数: \(reminderTimes.count) (期限前: \(beforeNotifications), 期限後: \(afterNotifications))")
-        } else {
-            // 従来のロジック（開始時刻から順に間隔を加算）
-            var currentTime = startTime
-            var notificationCount = 0
-
-            // 直近の通知をスケジュール
-            while notificationCount < actualMaxNotifications {
-                // タスクが完了していない場合のみ通知をスケジュール
-                if !task.isCompleted {
-                    let interval = intervals[notificationCount % intervals.count]
-                    currentTime = currentTime.addingTimeInterval(TimeInterval(interval * 60))
-
-                    // 終了日時がある場合のみ、終了時刻をチェック
-                    if let endTime = endTime, currentTime > endTime {
-                        break
-                    }
-                    
-                    // 現在時刻より未来の時刻のみスケジュール
-                    guard currentTime > Date() else {
-                        // 過去の時刻はスキップして次の間隔を試す
-                        print("警告: リマインド時刻が過去のためスキップ: \(currentTime) (タスク: \(task.title ?? "無題"))")
-                        notificationCount += 1
-                        continue
-                    }
-
-                    do {
-                        try await notificationManager.scheduleReminderNotification(
-                            for: task,
-                            at: currentTime
-                        )
-                        print("リマインド通知スケジュール成功: \(task.title ?? "無題") at \(currentTime)")
-                    } catch {
-                        print("リマインド通知スケジュールエラー: \(error.localizedDescription) (タスク: \(task.title ?? "無題"), 時刻: \(currentTime))")
-                        // エラーが発生しても次の通知を試す
-                    }
-                }
-
-                notificationCount += 1
-            }
-            
-            let instanceInfo = isRepeatingInstance ? " (繰り返しインスタンス)" : ""
-            print("リマインドスケジュール完了: \(task.title ?? "無題")\(instanceInfo) - スケジュール数: \(notificationCount)")
+        // 開始時刻が過去の場合は現在時刻から開始
+        if startTime < Date() {
+            print("ℹ️ リマインド開始時刻が過去のため、現在時刻から開始します")
+            startTime = Date()
         }
+
+        // 2. 終了時刻の決定（未設定ならnil = 完了まで無期限）
+        let endTime = task.reminderEndTime
+
+        // 3. 間隔を取得（分単位）
+        let intervalMinutes = Int(task.reminderInterval)
+
+        // 4. 通知をスケジュール
+        var currentTime = startTime
+        var scheduledCount = 0
+
+        while scheduledCount < availableSlots {
+            // タスクが完了している場合は終了
+            guard !task.isCompleted else { break }
+
+            // 終了時刻を超えた場合は終了
+            if let endTime = endTime, currentTime > endTime {
+                break
+            }
+
+            // 現在時刻より未来の時刻のみスケジュール
+            if currentTime > Date() {
+                do {
+                    try await notificationManager.scheduleReminderNotification(
+                        for: task,
+                        at: currentTime
+                    )
+                    scheduledCount += 1
+                    print("リマインド通知スケジュール: \(task.title ?? "無題") at \(currentTime)")
+                } catch {
+                    print("リマインド通知スケジュールエラー: \(error.localizedDescription)")
+                }
+            }
+
+            // 次の通知時刻を計算
+            currentTime = currentTime.addingTimeInterval(TimeInterval(intervalMinutes * 60))
+        }
+
+        let endInfo = endTime == nil ? "完了まで無期限" : "終了: \(endTime!)"
+        print("✅ リマインドスケジュール完了: \(task.title ?? "無題") - \(scheduledCount)個の通知 (\(endInfo))")
 
         // 注: 終了日時がない場合、通知が配信された後、次の通知を自動的にスケジュールする
-        // 実装は NotificationActionHandler と NotificationRefreshService で行う
+        // 実装は NotificationActionHandler で行う
     }
     
     // 次のリマインド通知をスケジュール（終了日時がない場合に使用）
@@ -260,41 +97,13 @@ class ReminderService {
         guard !task.isCompleted else { return }
 
         // 終了日時がない場合のみ、次の通知をスケジュール
-        let endTime = task.reminderEndTime ?? task.deadline ?? task.startDateTime
-        guard endTime == nil else { return }
+        guard task.reminderEndTime == nil else { return }
 
-        let intervals = calculateReminderIntervals(for: task)
-        guard !intervals.isEmpty else { return }
+        // 間隔を取得（分単位）
+        let intervalMinutes = Int(task.reminderInterval)
 
-        // 期限時刻（または開始日時）を基準に、どの間隔を使うべきか判定
-        // 期限前と期限後で同じ間隔パターンをサイクルさせる
-        let targetTime = task.deadline ?? task.startDateTime
-        var intervalToUse: Int
-
-        if let targetTime = targetTime {
-            // 期限からの経過通知回数を推定して、適切な間隔をサイクル
-            let timeSinceTarget = currentTime.timeIntervalSince(targetTime)
-            if timeSinceTarget > 0 {
-                // 期限後：経過時間から何回目の通知かを推定
-                var accumulatedTime: TimeInterval = 0
-                var notificationIndex = 0
-                while accumulatedTime < timeSinceTarget {
-                    let intervalIndex = notificationIndex % intervals.count
-                    accumulatedTime += TimeInterval(intervals[intervalIndex] * 60)
-                    notificationIndex += 1
-                }
-                // 次の通知で使うべき間隔
-                intervalToUse = intervals[notificationIndex % intervals.count]
-            } else {
-                // 期限前：最初の間隔を使用
-                intervalToUse = intervals.first ?? 60
-            }
-        } else {
-            // 期限時刻が設定されていない場合は、最初の間隔を使用
-            intervalToUse = intervals.first ?? 60
-        }
-
-        let nextTime = currentTime.addingTimeInterval(TimeInterval(intervalToUse * 60))
+        // 次の通知時刻を計算
+        let nextTime = currentTime.addingTimeInterval(TimeInterval(intervalMinutes * 60))
 
         // 未来の時刻のみスケジュール
         guard nextTime > Date() else { return }
@@ -304,115 +113,7 @@ class ReminderService {
             at: nextTime
         )
 
-        print("次のリマインド通知をスケジュール: \(task.title ?? "無題") at \(nextTime) (間隔: \(intervalToUse)分)")
-    }
-    
-    // リマインド間隔の計算（重要度とタスクタイプに基づく）
-    private func calculateReminderIntervals(for task: Task) -> [Int] {
-        guard let priorityString = task.priority,
-              let priority = Priority(rawValue: priorityString),
-              let taskTypeString = task.taskType,
-              let taskType = TaskType(rawValue: taskTypeString) else {
-            // デフォルト: タスクに設定されている間隔を使用、なければ1時間間隔
-            return [Int(task.reminderInterval)]
-        }
-        
-        switch (priority, taskType) {
-        case (.low, .task), (.medium, .task), (.high, .task):
-            // タスクタイプの場合、ユーザーが設定した間隔を優先的に使用
-            // これにより、「デフォルト設定を使用」がOFFの場合に設定したカスタム間隔が反映される
-            return [Int(task.reminderInterval)]
-            
-        case (.low, .schedule):
-            // 低重要度・スケジュール: 段階的リマインド
-            guard let startDateTime = task.startDateTime else {
-                return [60]
-            }
-            return calculateStagedIntervals(
-                startDateTime: startDateTime,
-                stages: [
-                    (days: 3.0, hours: nil, interval: 1440),    // 3日前から: 1日1回
-                    (days: 1.0, hours: nil, interval: 720),      // 1日前から: 12時間間隔
-                    (days: nil, hours: 6.0, interval: 360),      // 6時間前から: 6時間間隔
-                    (days: nil, hours: 1.0, interval: 60),      // 1時間前から: 1時間間隔
-                ] as [(days: Double?, hours: Double?, interval: Int)],
-                overdueInterval: 30                 // 開始日時超過後: 30分間隔
-            )
-            
-        case (.medium, .schedule):
-            // 中重要度・スケジュール: 段階的リマインド
-            guard let startDateTime = task.startDateTime else {
-                return [60]
-            }
-            return calculateStagedIntervals(
-                startDateTime: startDateTime,
-                stages: [
-                    (days: 7.0, hours: nil, interval: 1440),     // 1週間前から: 1日1回
-                    (days: 3.0, hours: nil, interval: 720),       // 3日前から: 12時間間隔
-                    (days: 1.0, hours: nil, interval: 360),       // 1日前から: 6時間間隔
-                    (days: nil, hours: 6.0, interval: 180),      // 6時間前から: 3時間間隔
-                    (days: nil, hours: 3.0, interval: 60),       // 3時間前から: 1時間間隔
-                    (days: nil, hours: 1.0, interval: 30),       // 1時間前から: 30分間隔
-                ] as [(days: Double?, hours: Double?, interval: Int)],
-                overdueInterval: 15                 // 開始日時超過後: 15分間隔
-            )
-            
-        case (.high, .schedule):
-            // 高重要度・スケジュール: 段階的リマインド
-            guard let startDateTime = task.startDateTime else {
-                return [60]
-            }
-            return calculateStagedIntervals(
-                startDateTime: startDateTime,
-                stages: [
-                    (days: 7.0, hours: nil, interval: 1440),     // 1週間前から: 1日1回
-                    (days: 3.0, hours: nil, interval: 720),       // 3日前から: 12時間間隔
-                    (days: 1.0, hours: nil, interval: 360),       // 1日前から: 6時間間隔
-                    (days: nil, hours: 6.0, interval: 180),      // 6時間前から: 3時間間隔
-                    (days: nil, hours: 3.0, interval: 60),       // 3時間前から: 1時間間隔
-                    (days: nil, hours: 1.0, interval: 30),       // 1時間前から: 30分間隔
-                    (days: nil, hours: 0.5, interval: 15),     // 30分前から: 15分間隔
-                    (days: nil, hours: 0.25, interval: 5),    // 15分前から: 5分間隔
-                    (days: nil, hours: 0.083, interval: 1),    // 5分前から: 1分間隔
-                ] as [(days: Double?, hours: Double?, interval: Int)],
-                overdueInterval: 1                  // 開始日時超過後: 1分間隔
-            )
-        }
-    }
-    
-    // 段階的リマインド間隔の計算
-    private func calculateStagedIntervals(
-        startDateTime: Date,
-        stages: [(days: Double?, hours: Double?, interval: Int)],
-        overdueInterval: Int
-    ) -> [Int] {
-        let now = Date()
-        let timeUntilStart = startDateTime.timeIntervalSince(now)
-        
-        var intervals: [Int] = []
-        
-        // 各ステージの間隔を計算
-        for stage in stages {
-            let threshold: TimeInterval
-            if let days = stage.days {
-                threshold = days * 86400
-            } else if let hours = stage.hours {
-                threshold = hours * 3600
-            } else {
-                continue
-            }
-            
-            if timeUntilStart > threshold {
-                intervals.append(stage.interval)
-            }
-        }
-        
-        // 開始日時を過ぎた場合の間隔
-        if timeUntilStart <= 0 {
-            intervals.append(overdueInterval)
-        }
-        
-        return intervals.isEmpty ? [60] : intervals
+        print("次のリマインド通知をスケジュール: \(task.title ?? "無題") at \(nextTime) (間隔: \(intervalMinutes)分)")
     }
 }
 

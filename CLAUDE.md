@@ -79,17 +79,18 @@ Persistence Layer (Core Data / SwiftData)
 - Both can be set together, with deadline taking priority for reminders
 
 ### 2. Reminder System
-Priority-based default settings with minute-level intervals:
+Simple, user-controlled reminder settings with three parameters:
 
-**For Tasks:**
-- Low: Daily (1440 min intervals)
-- Medium: Every 3 hours (180 min intervals)
-- High: Every hour (60 min intervals)
+**Configuration:**
+- **Start Time**: When to begin sending reminders (default: 1 hour before deadline/start time)
+- **Interval**: How often to send reminders (5min, 15min, 30min, 1hr, 3hr, 6hr, 12hr, 24hr)
+- **End Time**: When to stop sending reminders (optional, default: until task completion)
 
-**For Schedules:**
-- Staged reminders that increase in frequency as start time approaches
-- High priority example: Weekly → Daily → 6hr → 3hr → 1hr → 30min → 15min → 5min → 1min intervals
-- Continues after start time if not completed
+**Key Points:**
+- Unified settings for both tasks and schedules (no automatic adjustment by priority/type)
+- Users have full control over timing and frequency
+- Reminders continue indefinitely if no end time is set
+- Limited only by iOS 64-notification system limit
 
 ### 3. Natural Language Parsing
 - Automatically extract date/time from task titles
@@ -140,7 +141,10 @@ Priority-based default settings with minute-level intervals:
 - Date settings: deadline vs start time (both possible)
 - Preset time picker (12 common times + custom)
 - Alarm settings (collapsible)
-- Reminder settings (collapsible, auto-filled based on priority)
+- Reminder settings (collapsible):
+  - Start time picker (default: 1 hour before deadline/start time)
+  - Interval picker (5min ~ 24hr)
+  - Optional end time picker (default: until completion)
 - Repeat settings (collapsible)
 
 ### S005: Task Subdivision Screen
