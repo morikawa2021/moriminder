@@ -115,9 +115,10 @@ Priority-based default settings with minute-level intervals:
 - **REMINDER**: Repeated notifications at set intervals
 
 ### Notification Actions
-- **Complete**: Requires confirmation dialog
-- **Stop**: Requires confirmation dialog
+- **Complete**: Requires confirmation dialog (completes the task and stops all notifications)
 - **Open**: Opens app to task detail
+
+**Note**: Stop functionality is intentionally NOT available from notifications to prevent users from easily silencing reminders. Reminders can only be stopped from within the app (task detail/edit screens) with a confirmation dialog.
 
 ### Priority Mapping
 - High priority → `UNNotificationInterruptionLevel.critical`

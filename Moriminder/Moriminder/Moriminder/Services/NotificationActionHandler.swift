@@ -78,16 +78,7 @@ class NotificationActionHandler: NSObject, UNUserNotificationCenterDelegate {
                 object: nil,
                 userInfo: ["taskId": taskId]
             )
-            
-        case "STOP":
-            // リマインド停止は、NotificationCenterでイベントを送信
-            // UI層で確認ダイアログを表示する
-            NotificationCenter.default.post(
-                name: NSNotification.Name("TaskReminderStopRequested"),
-                object: nil,
-                userInfo: ["taskId": taskId]
-            )
-            
+
         case "OPEN":
             // アプリを開いてタスク詳細画面を表示
             NotificationCenter.default.post(
@@ -160,11 +151,6 @@ extension UNNotificationCategory {
                     identifier: "COMPLETE",
                     title: "完了",
                     options: [.foreground]
-                ),
-                UNNotificationAction(
-                    identifier: "STOP",
-                    title: "停止",
-                    options: []
                 ),
                 UNNotificationAction(
                     identifier: "OPEN",
