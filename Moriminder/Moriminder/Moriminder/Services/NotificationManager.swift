@@ -57,7 +57,7 @@ class NotificationManager {
         }
         
         let content = UNMutableNotificationContent()
-        let baseTitle = "アラーム: \(task.title ?? "タスク")"
+        let baseTitle = task.title ?? "タスク"
         content.title = formatNotificationTitle(baseTitle, for: task)
         content.body = "設定時刻になりました"
         if let soundName = task.alarmSound {
@@ -132,7 +132,7 @@ class NotificationManager {
         }
         
         let content = UNMutableNotificationContent()
-        let baseTitle = "リマインド: \(task.title ?? "タスク")"
+        let baseTitle = task.title ?? "タスク"
         content.title = formatNotificationTitle(baseTitle, for: task)
 
         // リマインド情報を構築
@@ -140,13 +140,7 @@ class NotificationManager {
         let targetDesc = task.reminderTargetDescription
         let intervalMinutes = Int(task.reminderInterval)
 
-        var bodyText = "\(targetDesc)の\(offsetMinutes)分前（\(intervalMinutes)分間隔）"
-
-        if let category = task.category, let categoryName = category.name {
-            bodyText += "\nカテゴリ: \(categoryName)"
-        }
-
-        content.body = bodyText
+        content.body = "\(targetDesc)の\(offsetMinutes)分前（\(intervalMinutes)分間隔）"
         content.sound = .default
         content.categoryIdentifier = "REMINDER"
         
@@ -354,7 +348,7 @@ class NotificationManager {
 
     /// 繰り返しタスクの通知タイトルに日時情報を追加
     /// - Parameters:
-    ///   - baseTitle: 基本タイトル（例: "アラーム: タスク名"）
+    ///   - baseTitle: 基本タイトル（タスク名）
     ///   - task: タスクオブジェクト
     /// - Returns: 繰り返しタスクの場合は日時付きタイトル、通常タスクの場合はそのまま
     private func formatNotificationTitle(_ baseTitle: String, for task: Task) -> String {
@@ -377,14 +371,7 @@ class NotificationManager {
         formatter.timeZone = TimeZone(identifier: "Asia/Tokyo")
         let dateString = formatter.string(from: targetDate)
 
-        // タイトルから「アラーム: 」「リマインド: 」を抽出
-        if let colonIndex = baseTitle.firstIndex(of: ":") {
-            let prefix = baseTitle[...colonIndex]
-            let taskName = baseTitle[baseTitle.index(after: colonIndex)...].trimmingCharacters(in: .whitespaces)
-            return "\(prefix) \(taskName) (\(dateString))"
-        }
-
-        // コロンがない場合はそのまま追加
+        // タスク名の後ろに日時を追加
         return "\(baseTitle) (\(dateString))"
     }
 }
