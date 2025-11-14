@@ -370,17 +370,12 @@ class NotificationManager {
 
     // MARK: - Helper Methods
 
-    /// 繰り返しタスクの通知タイトルに日時情報を追加
+    /// 通知タイトルに日時情報を追加
     /// - Parameters:
     ///   - baseTitle: 基本タイトル（タスク名）
     ///   - task: タスクオブジェクト
-    /// - Returns: 繰り返しタスクの場合は日時付きタイトル、通常タスクの場合はそのまま
+    /// - Returns: 日時付きタイトル（日時がない場合はそのまま）
     private func formatNotificationTitle(_ baseTitle: String, for task: Task) -> String {
-        // 繰り返しタスクの場合のみ日時を追加
-        guard task.isRepeating else {
-            return baseTitle
-        }
-
         // 日時を取得（開始時刻 > 期限の優先順位）
         let targetDate = task.startDateTime ?? task.deadline
 
