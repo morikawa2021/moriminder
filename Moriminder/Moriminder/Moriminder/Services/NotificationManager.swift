@@ -57,7 +57,8 @@ class NotificationManager {
         }
         
         let content = UNMutableNotificationContent()
-        content.title = "アラーム: \(task.title ?? "タスク")"
+        let baseTitle = "アラーム: \(task.title ?? "タスク")"
+        content.title = formatNotificationTitle(baseTitle, for: task)
         content.body = "設定時刻になりました"
         if let soundName = task.alarmSound {
             content.sound = UNNotificationSound(named: UNNotificationSoundName(soundName))
@@ -131,12 +132,21 @@ class NotificationManager {
         }
         
         let content = UNMutableNotificationContent()
-        content.title = "リマインド: \(task.title ?? "タスク")"
+        let baseTitle = "リマインド: \(task.title ?? "タスク")"
+        content.title = formatNotificationTitle(baseTitle, for: task)
+
+        // リマインド情報を構築
+        let offsetMinutes = task.reminderStartOffsetMinutes() ?? 60
+        let targetDesc = task.reminderTargetDescription
+        let intervalMinutes = Int(task.reminderInterval)
+
+        var bodyText = "\(targetDesc)の\(offsetMinutes)分前（\(intervalMinutes)分間隔）"
+
         if let category = task.category, let categoryName = category.name {
-            content.body = "カテゴリ: \(categoryName)"
-        } else {
-            content.body = "タスクを確認してください"
+            bodyText += "\nカテゴリ: \(categoryName)"
         }
+
+        content.body = bodyText
         content.sound = .default
         content.categoryIdentifier = "REMINDER"
         
@@ -338,6 +348,44 @@ class NotificationManager {
                 )
             }
         )
+    }
+
+    // MARK: - Helper Methods
+
+    /// 繰り返しタスクの通知タイトルに日時情報を追加
+    /// - Parameters:
+    ///   - baseTitle: 基本タイトル（例: "アラーム: タスク名"）
+    ///   - task: タスクオブジェクト
+    /// - Returns: 繰り返しタスクの場合は日時付きタイトル、通常タスクの場合はそのまま
+    private func formatNotificationTitle(_ baseTitle: String, for task: Task) -> String {
+        // 繰り返しタスクの場合のみ日時を追加
+        guard task.isRepeating else {
+            return baseTitle
+        }
+
+        // 日時を取得（開始時刻 > 期限の優先順位）
+        let targetDate = task.startDateTime ?? task.deadline
+
+        guard let targetDate = targetDate else {
+            return baseTitle
+        }
+
+        // 日時フォーマット: M/d HH:mm
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "ja_JP")
+        formatter.dateFormat = "M/d HH:mm"
+        formatter.timeZone = TimeZone(identifier: "Asia/Tokyo")
+        let dateString = formatter.string(from: targetDate)
+
+        // タイトルから「アラーム: 」「リマインド: 」を抽出
+        if let colonIndex = baseTitle.firstIndex(of: ":") {
+            let prefix = baseTitle[...colonIndex]
+            let taskName = baseTitle[baseTitle.index(after: colonIndex)...].trimmingCharacters(in: .whitespaces)
+            return "\(prefix) \(taskName) (\(dateString))"
+        }
+
+        // コロンがない場合はそのまま追加
+        return "\(baseTitle) (\(dateString))"
     }
 }
 

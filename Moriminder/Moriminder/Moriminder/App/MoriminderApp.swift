@@ -33,13 +33,6 @@ struct MoriminderApp: App {
         // デフォルトプリセット時間の初期化
         PresetTime.createDefaultPresetTimes(in: viewContext)
 
-        // NotificationActionHandlerを作成してデリゲートとして設定
-        notificationActionHandler = NotificationActionHandler(
-            taskManager: taskManager,
-            notificationManager: notificationManager
-        )
-        UNUserNotificationCenter.current().delegate = notificationActionHandler
-
         // NotificationRefreshServiceを作成
         notificationRefreshService = NotificationRefreshService(
             taskManager: taskManager,
@@ -47,6 +40,14 @@ struct MoriminderApp: App {
             reminderService: reminderService,
             viewContext: viewContext
         )
+
+        // NotificationActionHandlerを作成してデリゲートとして設定
+        notificationActionHandler = NotificationActionHandler(
+            taskManager: taskManager,
+            notificationManager: notificationManager,
+            notificationRefreshService: notificationRefreshService
+        )
+        UNUserNotificationCenter.current().delegate = notificationActionHandler
 
         // BackgroundTaskManagerを設定
         BackgroundTaskManager.shared.configure(refreshService: notificationRefreshService)

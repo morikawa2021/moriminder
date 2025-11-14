@@ -12,10 +12,12 @@ import CoreData
 class NotificationActionHandler: NSObject, UNUserNotificationCenterDelegate {
     private let taskManager: TaskManager
     private let notificationManager: NotificationManager
-    
-    init(taskManager: TaskManager, notificationManager: NotificationManager) {
+    private let notificationRefreshService: NotificationRefreshService
+
+    init(taskManager: TaskManager, notificationManager: NotificationManager, notificationRefreshService: NotificationRefreshService) {
         self.taskManager = taskManager
         self.notificationManager = notificationManager
+        self.notificationRefreshService = notificationRefreshService
         super.init()
     }
     
@@ -27,17 +29,10 @@ class NotificationActionHandler: NSObject, UNUserNotificationCenterDelegate {
     ) {
         // フォアグラウンドでも通知を表示
         completionHandler([.banner, .sound, .badge])
-        
-        // 通知が配信された後、次の通知をスケジュール（終了日時がない場合）
-        let taskId = extractTaskId(from: notification)
-        if let taskId = taskId,
-           let task = taskManager.fetchTask(id: taskId) {
-            _Concurrency.Task {
-                try? await notificationManager.scheduleNextReminderAfterDelivery(
-                    for: task,
-                    deliveredAt: Date()
-                )
-            }
+
+        // 通知が配信された後、通知をリフレッシュして5件のバッファを維持
+        _Concurrency.Task {
+            try? await notificationRefreshService.refreshNotifications()
         }
     }
     
@@ -57,18 +52,7 @@ class NotificationActionHandler: NSObject, UNUserNotificationCenterDelegate {
             completionHandler()
             return
         }
-        
-        // 通知が配信された後、次の通知をスケジュール（終了日時がない場合）
-        // スヌーズや完了以外のアクションの場合も、次の通知をスケジュール
-        if response.actionIdentifier != "COMPLETE" && response.actionIdentifier != "STOP" {
-            _Concurrency.Task {
-                try? await notificationManager.scheduleNextReminderAfterDelivery(
-                    for: task,
-                    deliveredAt: Date()
-                )
-            }
-        }
-        
+
         switch response.actionIdentifier {
         case "COMPLETE":
             // 通知アクションからの完了は、NotificationCenterでイベントを送信
@@ -86,18 +70,19 @@ class NotificationActionHandler: NSObject, UNUserNotificationCenterDelegate {
                 object: nil,
                 userInfo: ["taskId": taskId]
             )
-            
+
         default:
-            // 通知をタップした場合も、次の通知をスケジュール
-            _Concurrency.Task {
-                try? await notificationManager.scheduleNextReminderAfterDelivery(
-                    for: task,
-                    deliveredAt: Date()
-                )
-            }
+            // 通知をタップした場合（デフォルト動作）
             break
         }
-        
+
+        // 完了アクション以外の場合、通知をリフレッシュして5件のバッファを維持
+        if response.actionIdentifier != "COMPLETE" {
+            _Concurrency.Task {
+                try? await notificationRefreshService.refreshNotifications()
+            }
+        }
+
         completionHandler()
     }
     

@@ -92,7 +92,9 @@ struct TaskCardView: View {
             // リマインド設定
             if task.reminderEnabled {
                 Label {
-                    Text("リマインド: \(task.reminderInterval)分間隔")
+                    let offsetMinutes = task.reminderStartOffsetMinutes() ?? 60
+                    let intervalMinutes = Int(task.reminderInterval)
+                    Text("リマインド: \(offsetMinutes)分前・\(intervalMinutes)分間隔")
                 } icon: {
                     Image(systemName: "bell")
                 }

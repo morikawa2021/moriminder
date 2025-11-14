@@ -38,6 +38,19 @@ struct ReminderSettingView: View {
                     displayedComponents: [.date, .hourAndMinute]
                 )
 
+                // リマインド開始時刻の説明
+                if let targetDate = startDateTime ?? deadline {
+                    let currentStartTime = startTime ?? defaultStartTime
+                    let offsetSeconds = targetDate.timeIntervalSince(currentStartTime)
+                    let offsetMinutes = Int(offsetSeconds / 60)
+                    let targetDescription = startDateTime != nil ? "開始時刻" : "期限"
+
+                    Text("\(targetDescription)の\(offsetMinutes)分前から開始")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .padding(.leading)
+                }
+
                 // リマインド間隔
                 Picker("間隔", selection: $interval) {
                     Text("5分").tag(5)

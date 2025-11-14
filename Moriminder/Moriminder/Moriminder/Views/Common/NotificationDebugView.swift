@@ -7,12 +7,16 @@
 
 import SwiftUI
 import UserNotifications
+import CoreData
 
 struct NotificationDebugView: View {
     @State private var notificationDetails: NotificationDetails?
     @State private var isLoading = false
     @State private var errorMessage: String?
-    
+    @State private var showRescheduleConfirm = false
+    @State private var isRescheduling = false
+
+    @Environment(\.managedObjectContext) private var viewContext
     private let notificationManager = NotificationManager()
     private let dateFormatter: DateFormatter = {
         let formatter = DateFormatter()
@@ -247,11 +251,32 @@ struct NotificationDebugView: View {
             .navigationTitle("通知デバッグ")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button(action: {
+                        showRescheduleConfirm = true
+                    }) {
+                        if isRescheduling {
+                            ProgressView()
+                        } else {
+                            Label("再スケジュール", systemImage: "arrow.triangle.2.circlepath")
+                        }
+                    }
+                    .disabled(isRescheduling)
+                }
+
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("更新") {
                         loadNotificationDetails()
                     }
                 }
+            }
+            .alert("通知を再スケジュール", isPresented: $showRescheduleConfirm) {
+                Button("キャンセル", role: .cancel) {}
+                Button("実行", role: .destructive) {
+                    rescheduleAllNotifications()
+                }
+            } message: {
+                Text("すべての通知を削除して、新しいコードで再スケジュールします。この操作により、修正が反映されます。")
             }
             .onAppear {
                 loadNotificationDetails()
@@ -262,12 +287,61 @@ struct NotificationDebugView: View {
     private func loadNotificationDetails() {
         isLoading = true
         errorMessage = nil
-        
+
         _Concurrency.Task {
             let details = await notificationManager.getNotificationDetails()
             await MainActor.run {
                 self.notificationDetails = details
                 self.isLoading = false
+            }
+        }
+    }
+
+    private func rescheduleAllNotifications() {
+        isRescheduling = true
+
+        _Concurrency.Task {
+            do {
+                // 1. すべてのタスクを取得
+                let fetchRequest: NSFetchRequest<Task> = Task.fetchRequest()
+                fetchRequest.predicate = NSPredicate(format: "isCompleted == NO AND isArchived == NO")
+
+                let tasks = try await viewContext.perform {
+                    try self.viewContext.fetch(fetchRequest)
+                }
+
+                print("🔄 \(tasks.count)個のタスクの通知を再スケジュール中...")
+
+                // 2. 各タスクの通知を削除して再スケジュール
+                for task in tasks {
+                    // 既存の通知を削除
+                    await notificationManager.cancelNotifications(for: task)
+
+                    // アラームを再スケジュール
+                    if task.alarmEnabled {
+                        try? await notificationManager.scheduleAlarm(for: task)
+                    }
+
+                    // リマインダーを再スケジュール
+                    if task.reminderEnabled {
+                        let reminderService = ReminderService(notificationManager: notificationManager)
+                        try? await reminderService.scheduleReminder(for: task)
+                    }
+                }
+
+                print("✅ 通知の再スケジュール完了")
+
+                // 3. 通知詳細を再読み込み
+                await MainActor.run {
+                    self.isRescheduling = false
+                    self.loadNotificationDetails()
+                }
+            } catch {
+                print("❌ 通知の再スケジュールエラー: \(error)")
+                await MainActor.run {
+                    self.isRescheduling = false
+                    self.errorMessage = "再スケジュールエラー: \(error.localizedDescription)"
+                }
             }
         }
     }

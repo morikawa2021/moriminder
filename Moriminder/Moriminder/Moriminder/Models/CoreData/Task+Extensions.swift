@@ -46,5 +46,41 @@ extension Task {
         isCompleted = false
         isArchived = false
     }
+
+    // MARK: - Reminder Helper Methods
+
+    /// リマインドの基準となる日時を返す（開始時刻 > 期限の優先順位）
+    public var reminderTargetDate: Date? {
+        return startDateTime ?? deadline
+    }
+
+    /// リマインドの基準となる日時の名称を返す
+    public var reminderTargetDescription: String {
+        if startDateTime != nil {
+            return "開始時刻"
+        } else if deadline != nil {
+            return "期限"
+        } else {
+            return "予定時刻"
+        }
+    }
+
+    /// リマインド開始時刻が基準日時の何分前か計算
+    /// - Returns: 基準日時の何分前にリマインドが開始されるか（nilの場合はデフォルトの60分）
+    public func reminderStartOffsetMinutes() -> Int? {
+        guard let targetDate = reminderTargetDate else {
+            return nil
+        }
+
+        if let startTime = reminderStartTime {
+            // 開始時刻と基準日時の差分を計算（分単位）
+            let offsetSeconds = targetDate.timeIntervalSince(startTime)
+            let offsetMinutes = Int(offsetSeconds / 60)
+            return offsetMinutes
+        } else {
+            // reminderStartTimeが未設定の場合は60分前（デフォルト）
+            return 60
+        }
+    }
 }
 
