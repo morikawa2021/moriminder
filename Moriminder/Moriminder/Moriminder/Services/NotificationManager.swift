@@ -135,12 +135,36 @@ class NotificationManager {
         let baseTitle = task.title ?? "タスク"
         content.title = formatNotificationTitle(baseTitle, for: task)
 
-        // リマインド情報を構築
-        let offsetMinutes = task.reminderStartOffsetMinutes() ?? 60
+        // この通知配信時点での、期限/開始時刻までの残り時間を計算
+        let targetDate = task.startDateTime ?? task.deadline
         let targetDesc = task.reminderTargetDescription
-        let intervalMinutes = Int(task.reminderInterval)
 
-        content.body = "\(targetDesc)の\(offsetMinutes)分前（\(intervalMinutes)分間隔）"
+        if let targetDate = targetDate {
+            let remainingSeconds = targetDate.timeIntervalSince(date)
+            let remainingMinutes = Int(remainingSeconds / 60)
+
+            if remainingMinutes > 60 {
+                // 60分以上の場合は時間単位で表示
+                let hours = remainingMinutes / 60
+                let minutes = remainingMinutes % 60
+                if minutes > 0 {
+                    content.body = "\(targetDesc)まであと\(hours)時間\(minutes)分"
+                } else {
+                    content.body = "\(targetDesc)まであと\(hours)時間"
+                }
+            } else if remainingMinutes > 0 {
+                content.body = "\(targetDesc)まであと\(remainingMinutes)分"
+            } else if remainingMinutes == 0 {
+                content.body = "\(targetDesc)です"
+            } else {
+                // 過去の場合
+                let overMinutes = abs(remainingMinutes)
+                content.body = "\(targetDesc)を\(overMinutes)分過ぎています"
+            }
+        } else {
+            content.body = "タスクを確認してください"
+        }
+
         content.sound = .default
         content.categoryIdentifier = "REMINDER"
         
