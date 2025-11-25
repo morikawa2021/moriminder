@@ -16,24 +16,25 @@ class CategoryManager {
     }
     
     // カテゴリを名前で検索または作成
-    func findOrCreateCategory(name: String, color: String = "#007AFF") -> Category {
+    func findOrCreateCategory(name: String, color: String? = nil) -> Category {
         // 既存のカテゴリを検索
         let request: NSFetchRequest<Category> = Category.fetchRequest()
         request.predicate = NSPredicate(format: "name == %@", name)
         request.fetchLimit = 1
-        
+
         if let existingCategory = try? viewContext.fetch(request).first {
             return existingCategory
         }
-        
+
         // 新規作成
         let category = Category(context: viewContext)
         category.id = UUID()
         category.name = name
-        category.color = color
+        // 色が指定されていない場合は自動で割り当て
+        category.color = color ?? getNextAvailableColor()
         category.createdAt = Date()
         category.usageCount = 0
-        
+
         return category
     }
     
@@ -69,7 +70,39 @@ class CategoryManager {
             return []
         }
     }
-    
+
+    // 次に利用可能な色を取得（未使用色からランダム、全て使用済みなら最小使用回数の色からランダム）
+    func getNextAvailableColor() -> String {
+        let allCategories = fetchCategories()
+
+        // 各色がいくつのカテゴリに割り当てられているかカウント
+        var colorUsageCount: [String: Int] = [:]
+        for color in CategoryManager.defaultColors {
+            colorUsageCount[color] = 0
+        }
+
+        for category in allCategories {
+            if let categoryColor = category.color, colorUsageCount.keys.contains(categoryColor) {
+                colorUsageCount[categoryColor]! += 1
+            }
+        }
+
+        // 未使用の色（カウントが0の色）を抽出
+        let unusedColors = colorUsageCount.filter { $0.value == 0 }.map { $0.key }
+
+        if !unusedColors.isEmpty {
+            // 未使用の色からランダムに選択
+            return unusedColors.randomElement() ?? CategoryManager.defaultColors[0]
+        }
+
+        // 全て使用済みの場合、最小使用回数の色を抽出
+        let minUsageCount = colorUsageCount.values.min() ?? 0
+        let leastUsedColors = colorUsageCount.filter { $0.value == minUsageCount }.map { $0.key }
+
+        // 最小使用回数の色からランダムに選択
+        return leastUsedColors.randomElement() ?? CategoryManager.defaultColors[0]
+    }
+
     // カテゴリを削除
     func deleteCategory(_ category: Category) throws {
         viewContext.delete(category)
