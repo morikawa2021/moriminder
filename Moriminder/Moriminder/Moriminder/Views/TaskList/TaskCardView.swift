@@ -65,32 +65,41 @@ struct TaskCardView: View {
                     )
                     .cornerRadius(8)
                 }
-                
+
                 // 重要度
                 if let priority = task.priority {
                     PriorityBadge(priority: Priority(rawValue: priority) ?? .medium)
                 }
+
+                // 繰り返しアイコン
+                if task.isRepeating {
+                    Image(systemName: "repeat")
+                        .font(.caption)
+                        .foregroundColor(.blue)
+                }
             }
             
-            // 日時情報
+            // 日時情報（強調表示）
             if let deadline = task.deadline {
                 Label {
                     Text(formatDate(deadline))
                 } icon: {
                     Image(systemName: "calendar")
                 }
-                .font(.caption)
-                .foregroundColor(.secondary)
+                .font(.subheadline)
+                .fontWeight(.medium)
+                .foregroundColor(.primary)
             }
-            
+
             if let startDateTime = task.startDateTime {
                 Label {
                     Text("開始: \(formatDate(startDateTime))")
                 } icon: {
                     Image(systemName: "clock")
                 }
-                .font(.caption)
-                .foregroundColor(.secondary)
+                .font(.subheadline)
+                .fontWeight(.medium)
+                .foregroundColor(.primary)
             }
             
             // リマインド設定

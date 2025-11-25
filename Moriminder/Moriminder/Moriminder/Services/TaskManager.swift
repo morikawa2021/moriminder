@@ -153,7 +153,12 @@ class TaskManager {
         
         // フィルタの適用
         var predicates: [NSPredicate] = []
-        
+
+        // 繰り返しタスクの親タスク（テンプレート）を常に除外
+        // 親タスク = isRepeating == true && parentTaskId == nil
+        // 子インスタンス（実際の予定日時を持つもの）のみ表示
+        predicates.append(NSPredicate(format: "isRepeating == NO OR parentTaskId != nil"))
+
         switch filter {
         case .all:
             // アーカイブ済みは除外（すべて = アーカイブ以外のすべて）
