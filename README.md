@@ -1,13 +1,13 @@
-# Moriminder（モリマインダー）
+# Mamorunder（マモルンダー）
 
 リマインド通知を何度もスヌーズしてしまい、結局タスクを実行せずに忘れてしまう人のために、通知を無視しにくく、タスクを確実に実行できるようにサポートするタスク管理アプリ。
 
 ## プロジェクト構成
 
 ```
-Moriminder/
+Mamorunder/
 ├── App/
-│   ├── MoriminderApp.swift          # アプリエントリーポイント
+│   ├── MamorunderApp.swift          # アプリエントリーポイント
 │   └── PersistenceController.swift  # Core Dataスタック
 ├── Models/
 │   ├── Enums/                       # 列挙型定義
@@ -29,7 +29,7 @@ Moriminder/
 2. "Create a new Xcode project"を選択
 3. "iOS" > "App"を選択
 4. プロジェクト情報を入力:
-   - Product Name: `Moriminder`
+   - Product Name: `Mamorunder`
    - Interface: `SwiftUI`
    - Language: `Swift`
    - Use Core Data: ✅ **チェックを入れる**
@@ -37,17 +37,17 @@ Moriminder/
 
 ### 2. 既存ファイルの追加
 
-作成したXcodeプロジェクトに、このリポジトリの`Moriminder/`ディレクトリ内のファイルを追加します。
+作成したXcodeプロジェクトに、このリポジトリの`Mamorunder/`ディレクトリ内のファイルを追加します。
 
 1. Xcodeでプロジェクトを開く
 2. プロジェクトナビゲーターで右クリック > "Add Files to..."
-3. `Moriminder/`ディレクトリを選択
+3. `Mamorunder/`ディレクトリを選択
 4. "Create groups"を選択
 5. "Add"をクリック
 
 ### 3. Core Dataモデルの作成
 
-1. Xcodeで`Moriminder.xcdatamodeld`ファイルを開く（または新規作成）
+1. Xcodeで`Mamorunder.xcdatamodeld`ファイルを開く（または新規作成）
 2. 以下のエンティティを作成:
 
 #### Task エンティティ

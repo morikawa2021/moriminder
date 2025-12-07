@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**Moriminder** is an iOS task management application designed to help users who repeatedly snooze reminders and eventually forget their tasks. The app makes notifications harder to ignore and helps ensure tasks are actually completed.
+**Mamorunder** is an iOS task management application designed to help users who repeatedly snooze reminders and eventually forget their tasks. The app makes notifications harder to ignore and helps ensure tasks are actually completed.
 
 ### Key Design Principles
 - **Simplicity first**: Keep operations as simple as possible
@@ -183,7 +183,7 @@ Simple, user-controlled reminder settings with three parameters:
      1. Open Xcode project
      2. Select target → Info tab
      3. Add "Permitted background task scheduler identifiers" key
-     4. Add item: `jp.co.softstudio.Moriminder.notification-refresh`
+     4. Add item: `jp.co.softstudio.Mamorunder.notification-refresh`
 
 6. **LLM API integration**:
    - Timeout: 10 seconds
@@ -236,9 +236,9 @@ Simple, user-controlled reminder settings with three parameters:
 ## File Organization (Recommended)
 
 ```
-Moriminder/
+Mamorunder/
 ├── App/
-│   ├── MoriminderApp.swift
+│   ├── MamorunderApp.swift
 │   └── AppDelegate.swift
 ├── Models/
 │   ├── Task.swift
