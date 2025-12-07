@@ -50,7 +50,7 @@ struct AppTitleToolbar: ToolbarContent {
     var body: some ToolbarContent {
         ToolbarItem(placement: .principal) {
             VStack(spacing: 2) {
-                Text("守るんだぁ")
+                Text("マモルンダー")
                     .font(.headline)
                 Text(appVersion)
                     .font(.caption2)

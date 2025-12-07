@@ -152,7 +152,7 @@ struct NotificationDebugView: View {
                             Text("システム設定でユーザーが個別に変更した設定（サウンド、バッジなど）は、このAPIでは正確に反映されない場合があります。")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
-                            Text("実際の設定は「設定」アプリ > 「通知」> 「守るんだぁ」で確認してください。")
+                            Text("実際の設定は「設定」アプリ > 「通知」> 「マモルンダー」で確認してください。")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                         }

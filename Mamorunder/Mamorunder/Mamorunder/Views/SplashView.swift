@@ -33,7 +33,7 @@ struct SplashView: View {
                         .symbolEffect(.bounce, value: opacity)
                     
                     // アプリ名
-                    Text("守るんだぁ")
+                    Text("マモルンダー")
                         .font(.system(size: 36, weight: .bold))
                         .foregroundColor(.primary)
                     
